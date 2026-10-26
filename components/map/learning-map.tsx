@@ -6,6 +6,7 @@ import { MapToolbar } from "@/components/map/map-toolbar";
 import { MapHeader } from "@/components/map/map-header";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { flowToMap, mapToFlow } from "@/lib/map-utils";
+import { saveMapToSupabase } from "@/lib/maps/persistence";
 import { getMapProgress } from "@/data/sample-maps";
 import type { Bibble, BibbleNodeData, LearningMap } from "@/types/map";
 import {
@@ -81,7 +82,7 @@ const createHistory = (nodes: Node<BibbleNodeData>[], edges: Edge[]): EditHistor
   index: 0,
 });
 
-export function LearningMapCanvas({ initialMap, editable = false }: { initialMap: LearningMap; editable?: boolean }) {
+export function LearningMapCanvas({ initialMap, editable = false, preferInitialMap = false }: { initialMap: LearningMap; editable?: boolean; preferInitialMap?: boolean }) {
   const initialFlow = useMemo(() => mapToFlow(initialMap), [initialMap]);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<BibbleNodeData>>(initialFlow.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialFlow.edges);
@@ -89,6 +90,7 @@ export function LearningMapCanvas({ initialMap, editable = false }: { initialMap
   const [saved, setSaved] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [storedMaps, setStoredMaps, hydrated] = useLocalStorage<LearningMap[]>("bibble-maps", []);
   const flowRef = useRef<ReactFlowInstance<Node<BibbleNodeData>, Edge> | null>(null);
   const historyRef = useRef<EditHistory | null>(null);
@@ -114,7 +116,7 @@ export function LearningMapCanvas({ initialMap, editable = false }: { initialMap
     if (loadedMapIdRef.current === initialMap.id) return;
     loadedMapIdRef.current = initialMap.id;
 
-    const savedMap = storedMaps.find((map) => map.id === initialMap.id);
+    const savedMap = preferInitialMap ? undefined : storedMaps.find((map) => map.id === initialMap.id);
     const flow = savedMap ? mapToFlow(savedMap) : initialFlow;
     const nextNodes = flow.nodes.map(cloneNode);
     const nextEdges = flow.edges.map(cloneEdge);
@@ -125,7 +127,7 @@ export function LearningMapCanvas({ initialMap, editable = false }: { initialMap
     setEdges(nextEdges);
 
     if (editable) historyRef.current = createHistory(nextNodes, nextEdges);
-  }, [editable, hydrated, initialFlow, initialMap.id, setEdges, setNodes, storedMaps]);
+  }, [editable, hydrated, initialFlow, initialMap.id, preferInitialMap, setEdges, setNodes, storedMaps]);
 
   /** Append a snapshot unless it matches the current history entry. */
   const recordHistory = useCallback(
@@ -245,15 +247,22 @@ export function LearningMapCanvas({ initialMap, editable = false }: { initialMap
    * Accepts an optional `updatedBibble` so the save can include a just-edited
    * bibble before React flushes the setNodes() call (avoids stale-state race).
    */
-  const saveMap = useCallback((updatedBibble?: Bibble) => {
+  const saveMap = useCallback(async (updatedBibble?: Bibble) => {
     // Build node list with the updated bibble merged in (if provided)
     const currentNodes = updatedBibble
       ? nodesRef.current.map((n) => n.id === updatedBibble.id ? { ...n, data: updatedBibble as BibbleNodeData } : n)
       : nodesRef.current;
     const next = flowToMap(initialMap, currentNodes, edgesRef.current);
     setStoredMaps((current) => [...current.filter((m) => m.id !== next.id), next]);
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 1800);
+    setSaveError(null);
+    const persisted = await saveMapToSupabase(next);
+    if (!persisted) {
+      setSaved(false);
+      setSaveError("Your local changes are saved, but Supabase could not be updated. Please try again.");
+      return;
+    }
+    setSaved(persisted);
+    if (persisted) window.setTimeout(() => setSaved(false), 1800);
   }, [initialMap, setStoredMaps]);
 
   const addBibble = () => {
@@ -379,6 +388,7 @@ export function LearningMapCanvas({ initialMap, editable = false }: { initialMap
       </ReactFlow>
       {!editable && <div className="map-canvas-hint"><Star size={14} /> Click a bibble to explore it</div>}
     </div>
+    {saveError && <p role="alert" style={{ margin: "10px 0", color: "var(--danger, #b42318)" }}>{saveError}</p>}
     <AnimatePresence>{selected && <BibbleDetails key={selected.id} bibble={selected} onClose={() => setSelectedId(null)} onChange={updateSelected} onSave={saveMap} />}</AnimatePresence>
     {editable && selected && <button className="delete-bibble" onClick={() => deleteBibble(selected.id)}><Trash2 size={15} /> Delete bibble</button>}
     {editable && <div className="editor-back-link"><ArrowLeft size={15} /> <span>Changes are kept on this device</span></div>}
