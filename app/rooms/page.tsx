@@ -1,13 +1,21 @@
 "use client";
 
+import { RoomFilterPanel } from "@/components/rooms/room-filters";
 import { RoomGuidelines } from "@/components/rooms/room-guidelines";
 import { StudyRoomCard } from "@/components/rooms/study-room-card";
 import { SiteHeader } from "@/components/site-header";
 import { studyRooms } from "@/data/study-rooms";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import {
+  emptyRoomFilters,
+  filterRooms,
+  getRoomFilterOptions,
+  type RoomFilterGroup,
+  type RoomFilters,
+} from "@/lib/room-filters";
 import { CUSTOM_ROOMS_KEY } from "@/lib/rooms/custom-rooms";
 import type { StudyRoom } from "@/types/room";
-import { Plus, Search, Star, Users } from "lucide-react";
+import { Plus, Search, Star, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -15,6 +23,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 export default function RoomsPage() {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState<RoomFilters>(emptyRoomFilters);
   const [customRooms] = useLocalStorage<StudyRoom[]>(CUSTOM_ROOMS_KEY, []);
   const [pendingRoom, setPendingRoom] = useState<StudyRoom | null>(null);
   const entryTriggerRef = useRef<HTMLButtonElement>(null);
@@ -36,15 +45,33 @@ export default function RoomsPage() {
     router.push(`/rooms/${roomId}`);
   }, [pendingRoom, router]);
 
+  const allRooms = useMemo(() => [...studyRooms, ...customRooms], [customRooms]);
+
+  // Filter options come from the rooms themselves (including rooms the user created), counted over the full list.
+  const options = useMemo(() => getRoomFilterOptions(allRooms), [allRooms]);
+
   const rooms = useMemo(
     () =>
-      [...studyRooms, ...customRooms].filter((room) =>
+      filterRooms(allRooms, filters).filter((room) =>
         `${room.name} ${room.topic} ${room.tags.join(" ")}`
           .toLowerCase()
           .includes(query.toLowerCase())
       ),
-    [query, customRooms]
+    [query, filters, allRooms]
   );
+
+  const toggleFilter = (group: RoomFilterGroup, value: string) =>
+    setFilters((current) => ({
+      ...current,
+      [group]: current[group].includes(value)
+        ? current[group].filter((item) => item !== value)
+        : [...current[group], value],
+    }));
+
+  const clearFilters = () => {
+    setFilters(emptyRoomFilters);
+    setQuery("");
+  };
 
   return (
     <main className="rooms-page">
@@ -83,8 +110,8 @@ export default function RoomsPage() {
           />
         </div>
         <div className="rooms-toolbar-actions">
-          <span className="rooms-toolbar-note">
-            {rooms.length} open rooms · no sign-up needed
+          <span className="rooms-toolbar-note" role="status" aria-live="polite">
+            {rooms.length} {rooms.length === 1 ? "open room" : "open rooms"} · no sign-up needed
           </span>
           <Link href="/rooms/new" className="button-primary">
             <Plus size={16} aria-hidden="true" /> Create a room
@@ -92,11 +119,23 @@ export default function RoomsPage() {
         </div>
       </div>
 
-      <section className="room-grid">
-        {rooms.map((room) => (
-          <StudyRoomCard key={room.id} room={room} onEnter={openGuidelines} />
-        ))}
-      </section>
+      <RoomFilterPanel options={options} filters={filters} onToggle={toggleFilter} onClear={clearFilters} />
+
+      {rooms.length > 0 ? (
+        <section className="room-grid">
+          {rooms.map((room) => (
+            <StudyRoomCard key={room.id} room={room} onEnter={openGuidelines} />
+          ))}
+        </section>
+      ) : (
+        <section className="rooms-empty">
+          <h2>No rooms match those filters</h2>
+          <p>Try removing a filter or two, or clear everything to see all rooms.</p>
+          <button type="button" className="room-filter-clear" onClick={clearFilters}>
+            <X size={14} /> Clear filters
+          </button>
+        </section>
+      )}
 
       <section className="rooms-callout cozy-wallpaper-pattern">
         <div className="callout-spark">
