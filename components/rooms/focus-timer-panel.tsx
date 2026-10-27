@@ -1,6 +1,7 @@
 "use client";
 
-import { CheckCircle2, Clock3, Pause, Play, RotateCcw } from "lucide-react";
+import type { NotificationSupport } from "@/hooks/use-timer-notifications";
+import { Bell, BellOff, CheckCircle2, Clock3, Pause, Play, RotateCcw } from "lucide-react";
 import { motion } from "motion/react";
 
 interface FocusTimerPanelProps {
@@ -11,6 +12,11 @@ interface FocusTimerPanelProps {
   onCompleteEarly?: () => void;
   onReset?: () => void;
   isCompleted?: boolean;
+  notifications?: {
+    enabled: boolean;
+    permission: NotificationSupport;
+    onToggle: () => void;
+  };
 }
 
 export function FocusTimerPanel({
@@ -21,6 +27,7 @@ export function FocusTimerPanel({
   onCompleteEarly,
   onReset,
   isCompleted = false,
+  notifications,
 }: FocusTimerPanelProps) {
   return (
     <div className="focus-panel">
@@ -96,6 +103,23 @@ export function FocusTimerPanel({
           </button>
         )}
       </div>
+
+      {notifications && notifications.permission !== "unsupported" && (
+        <div className="focus-notify">
+          <button
+            type="button"
+            className="focus-notify-button"
+            onClick={notifications.onToggle}
+            aria-pressed={notifications.enabled}
+          >
+            {notifications.enabled ? <Bell size={15} /> : <BellOff size={15} />}
+            {notifications.enabled ? "Timer alerts on" : "Alert me when the timer ends"}
+          </button>
+          {notifications.permission === "denied" && (
+            <small>Notifications are blocked in your browser settings for this site.</small>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -2,15 +2,17 @@
 
 import { AmbientSound, type Soundscape } from "@/components/rooms/ambient-sound";
 import { FocusTimerPanel } from "@/components/rooms/focus-timer-panel";
+import { RoomGuidelines } from "@/components/rooms/room-guidelines";
 import { StudyRoomScene } from "@/components/rooms/study-room-scene";
 import { StudyRoomSidebar } from "@/components/rooms/study-room-sidebar";
 import { ThemePicker } from "@/components/ui/theme-picker";
 import { useFocusTimer } from "@/hooks/use-focus-timer";
+import { useTimerNotifications } from "@/hooks/use-timer-notifications";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useTheme } from "@/hooks/use-theme";
 import type { StudyRoom } from "@/types/room";
 import { recordFocusSession } from "@/lib/progress";
-import { ArrowLeft, Bell, Headphones, Sparkles, Users } from "lucide-react";
+import { ArrowLeft, Bell, BookOpen, Headphones, Sparkles, Users } from "lucide-react";
 import { motion } from "motion/react";
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
@@ -25,12 +27,19 @@ export function StudyRoomShell({ room }: { room: StudyRoom }) {
   const { motif } = useTheme();
 
   const [joined, setJoined] = useState(false);
+  const [guidelinesOpen, setGuidelinesOpen] = useState(false);
   const [note, setNote] = useState("");
   const [notes, setNotes] = useLocalStorage<string[]>(`bibble-room-notes-${room.id}`, defaultNotes);
   const [soundscape, setSoundscape] = useState<Soundscape>("off");
   const [lampOn, setLampOn] = useState(true);
   const [catHearts, setCatHearts] = useState<number>(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const guidelinesButtonRef = useRef<HTMLButtonElement>(null);
+
+  const closeGuidelines = useCallback(() => {
+    setGuidelinesOpen(false);
+    guidelinesButtonRef.current?.focus();
+  }, []);
 
   const triggerToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -56,10 +65,27 @@ export function StudyRoomShell({ room }: { room: StudyRoom }) {
     triggerToast(`🎉 Completed a ${room.minutes}-min session in ${room.name}! Logged to My Progress.`);
   }, [room, triggerToast]);
 
+  const timerAlerts = useTimerNotifications();
+
+  const handleTimerFinished = useCallback(() => {
+    // The timer can report completion more than once for one run, so only alert the first time.
+    const alreadyHandled = loggedRunIdRef.current === runIdRef.current;
+    handleSessionComplete();
+    if (alreadyHandled) return;
+    timerAlerts.notify("Focus session finished", `Nice work, your ${room.minutes}-min session in ${room.name} is done.`);
+  }, [handleSessionComplete, timerAlerts, room]);
+
   const { active, formattedTime, toggleTimer, resetTimer, isCompleted, setIsCompleted } = useFocusTimer(
     room.minutes,
-    handleSessionComplete
+    handleTimerFinished
   );
+
+  const handleAlertsToggle = async () => {
+    const result = await timerAlerts.toggle();
+    if (result === "enabled") triggerToast("Timer alerts on. We will notify you when the session ends 🔔");
+    else if (result === "disabled") triggerToast("Timer alerts turned off");
+    else if (result === "denied") triggerToast("Notifications are blocked, allow them in your browser settings to get alerts");
+  };
 
   const handleTimerToggle = () => {
     if (isCompleted) runIdRef.current += 1;
@@ -149,10 +175,22 @@ export function StudyRoomShell({ room }: { room: StudyRoom }) {
               <h1>{room.name}</h1>
               <p>{room.description}</p>
             </div>
-            <div className="room-live-count">
-              <Users size={16} />
-              <strong>{room.participants + (joined ? 1 : 0)}</strong>
-              <span>studying now</span>
+            <div className="room-title-actions">
+              <div className="room-live-count">
+                <Users size={16} />
+                <strong>{room.participants + (joined ? 1 : 0)}</strong>
+                <span>studying now</span>
+              </div>
+              <button
+                ref={guidelinesButtonRef}
+                type="button"
+                className="room-guidelines-trigger"
+                onClick={() => setGuidelinesOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={guidelinesOpen}
+              >
+                <BookOpen size={15} aria-hidden="true" /> Room guidelines
+              </button>
             </div>
           </div>
 
@@ -170,6 +208,11 @@ export function StudyRoomShell({ room }: { room: StudyRoom }) {
             onCompleteEarly={handleManualComplete}
             onReset={handleTimerReset}
             isCompleted={isCompleted}
+            notifications={{
+              enabled: timerAlerts.enabled,
+              permission: timerAlerts.permission,
+              onToggle: handleAlertsToggle,
+            }}
           />
         </section>
 
@@ -189,6 +232,8 @@ export function StudyRoomShell({ room }: { room: StudyRoom }) {
           onAddNote={handleAddNote}
         />
       </div>
+
+      <RoomGuidelines roomName={room.name} open={guidelinesOpen} onClose={closeGuidelines} />
     </main>
   );
 }

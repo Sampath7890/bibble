@@ -33,36 +33,37 @@ interface BibbleDetailsProps {
 }
 
 export function BibbleDetails({ bibble, onClose, onChange, onSave }: BibbleDetailsProps) {
-  // Local draft — isolated from roadmap until the user clicks Save Changes
-  const [draft, setDraft] = useState<Bibble>(() => ({ ...bibble, progress: safeProgress(bibble.progress) }));
+  // Unsaved draft, isolated from the roadmap until the user clicks Save Changes.
+  // While clean the panel mirrors the committed bibble, so undo/redo shows up here too.
+  const [draft, setDraft] = useState<Bibble | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  const committed = { ...bibble, progress: safeProgress(bibble.progress) };
+  const value = draft ?? committed;
+  const isDirty = draft !== null;
+
   const patch = (partial: Partial<Bibble>) => {
-    setDraft((d) => ({ ...d, ...partial }));
-    setIsDirty(true);
+    setDraft((current) => ({ ...(current ?? committed), ...partial }));
   };
 
   const handleSave = () => {
     if (isSaving) return;
     setIsSaving(true);
 
-    // 1. Push draft into the roadmap node for immediate UI feedback
-    onChange?.(draft);
-    // 2. Persist — pass draft so parent avoids the stale-state race condition
-    onSave?.(draft);
-    // 3. Flash confirmation
+    // One Save Changes = one committed map edit (the parent records the history step).
+    onChange?.(value);
+    onSave?.(value);
+    setDraft(null);
     setSavedFlash(true);
-    setIsDirty(false);
     window.setTimeout(() => {
       setSavedFlash(false);
       setIsSaving(false);
     }, 1800);
   };
 
-  const setStatus = (value: BibbleStatus) =>
-    patch({ status: value, progress: value === "completed" ? 100 : draft.progress });
+  const setStatus = (status: BibbleStatus) =>
+    patch({ status, progress: status === "completed" ? 100 : value.progress });
 
   const setProgress = (raw: number) => {
     const p = safeProgress(raw);
@@ -88,7 +89,7 @@ export function BibbleDetails({ bibble, onClose, onChange, onSave }: BibbleDetai
             <span className="eyebrow">Bibble details{(isDirty || savedFlash) ? " ·" : ""}</span>
             {isDirty && <span className="details-unsaved-badge">unsaved</span>}
             {savedFlash && <span className="details-saved-badge">saved</span>}
-            <h2>{draft.title}</h2>
+            <h2>{value.title}</h2>
           </div>
           <button className="icon-button" onClick={onClose} aria-label="Close details"><X size={18} /></button>
         </div>
@@ -96,20 +97,20 @@ export function BibbleDetails({ bibble, onClose, onChange, onSave }: BibbleDetai
         <label className="field-label" htmlFor="bibble-description">Description</label>
         <textarea
           id="bibble-description"
-          value={draft.description ?? ""}
+          value={value.description ?? ""}
           onChange={(e) => patch({ description: e.target.value })}
         />
 
         <div className="details-section">
           <span className="field-label">Status</span>
           <div className="status-options">
-            {statusOptions.map(({ value, icon: Icon }) => (
+            {statusOptions.map(({ value: statusValue, icon: Icon }) => (
               <button
-                key={value}
-                className={`status-option ${draft.status === value ? "status-option-active" : ""}`}
-                onClick={() => setStatus(value)}
+                key={statusValue}
+                className={`status-option ${value.status === statusValue ? "status-option-active" : ""}`}
+                onClick={() => setStatus(statusValue)}
               >
-                <Icon size={15} /> {statusLabels[value]}
+                <Icon size={15} /> {statusLabels[statusValue]}
               </button>
             ))}
           </div>
@@ -120,8 +121,8 @@ export function BibbleDetails({ bibble, onClose, onChange, onSave }: BibbleDetai
             <span className="field-label"><Link2 size={14} /> Resources</span>
             <button className="text-button"><Plus size={14} /> Add resource</button>
           </div>
-          {(draft.resources ?? []).length
-            ? draft.resources?.map((resource) => (
+          {(value.resources ?? []).length
+            ? value.resources?.map((resource) => (
                 <a className="resource-link" href={resource.url} key={resource.id} target="_blank" rel="noreferrer">
                   <BookOpen size={14} />{resource.label}<ExternalLink size={12} />
                 </a>
@@ -133,20 +134,20 @@ export function BibbleDetails({ bibble, onClose, onChange, onSave }: BibbleDetai
           <label className="field-label" htmlFor="bibble-notes">Notes</label>
           <textarea
             id="bibble-notes"
-            value={draft.notes ?? ""}
+            value={value.notes ?? ""}
             placeholder="A small thought to remember..."
             onChange={(e) => patch({ notes: e.target.value })}
           />
         </div>
 
         <div className="details-progress">
-          <div><span>Progress</span><strong>{draft.progress}%</strong></div>
+          <div><span>Progress</span><strong>{value.progress}%</strong></div>
           <input
             aria-label="Bibble progress"
             type="range"
             min="0"
             max="100"
-            value={draft.progress}
+            value={value.progress}
             onChange={(e) => setProgress(Number(e.target.value))}
           />
         </div>

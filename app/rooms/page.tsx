@@ -1,5 +1,6 @@
 "use client";
 
+import { RoomGuidelines } from "@/components/rooms/room-guidelines";
 import { StudyRoomCard } from "@/components/rooms/study-room-card";
 import { SiteHeader } from "@/components/site-header";
 import { studyRooms } from "@/data/study-rooms";
@@ -8,11 +9,32 @@ import { CUSTOM_ROOMS_KEY } from "@/lib/rooms/custom-rooms";
 import type { StudyRoom } from "@/types/room";
 import { Plus, Search, Star, Users } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 export default function RoomsPage() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [customRooms] = useLocalStorage<StudyRoom[]>(CUSTOM_ROOMS_KEY, []);
+  const [pendingRoom, setPendingRoom] = useState<StudyRoom | null>(null);
+  const entryTriggerRef = useRef<HTMLButtonElement>(null);
+
+  const openGuidelines = useCallback((room: StudyRoom, trigger: HTMLButtonElement) => {
+    entryTriggerRef.current = trigger;
+    setPendingRoom(room);
+  }, []);
+
+  const closeGuidelines = useCallback(() => {
+    setPendingRoom(null);
+    entryTriggerRef.current?.focus();
+  }, []);
+
+  const confirmEntry = useCallback(() => {
+    if (!pendingRoom) return;
+    const roomId = pendingRoom.id;
+    setPendingRoom(null);
+    router.push(`/rooms/${roomId}`);
+  }, [pendingRoom, router]);
 
   const rooms = useMemo(
     () =>
@@ -72,7 +94,7 @@ export default function RoomsPage() {
 
       <section className="room-grid">
         {rooms.map((room) => (
-          <StudyRoomCard key={room.id} room={room} />
+          <StudyRoomCard key={room.id} room={room} onEnter={openGuidelines} />
         ))}
       </section>
 
@@ -91,6 +113,15 @@ export default function RoomsPage() {
           Create a map <Star size={16} />
         </Link>
       </section>
+
+      {pendingRoom && (
+        <RoomGuidelines
+          roomName={pendingRoom.name}
+          open
+          onClose={closeGuidelines}
+          onConfirm={confirmEntry}
+        />
+      )}
     </main>
   );
 }

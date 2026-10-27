@@ -981,11 +981,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   align-items: center;
   justify-content: space-between;
   padding: 10px 20px;
+  border: 0;
   border-radius: 99px;
   background: var(--brand-gradient, var(--primary));
   color: #fff;
   font: 700 13px var(--font-body), sans-serif;
   text-decoration: none;
+  cursor: pointer;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 14px rgb(var(--shadow-color) / 0.2);
   transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease, filter 0.18s ease;
 }
@@ -1569,10 +1571,67 @@ html.dark .preview-window-line {
 .room-note-list { display: flex; flex-direction: column; gap: 10px; max-height: 180px; overflow-y: auto; }
 .room-note { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.4; color: var(--muted); padding: 8px 12px; border-radius: 10px; background: var(--background); }
 .note-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); flex-shrink: 0; margin-top: 5px; }
+.focus-notify { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 4px; }
+.focus-notify small { color: var(--muted-foreground); font-size: 12px; text-align: center; }
+.focus-notify-button { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 99px; background: transparent; color: var(--foreground); font: 600 13px Arial, sans-serif; cursor: pointer; }
+.focus-notify-button[aria-pressed="true"] { border-color: var(--primary); color: var(--primary); background: var(--surface-soft); }
 .room-note-hint { margin: 0; font-size: 12px; color: var(--muted-foreground); }
 .room-note-form { display: flex; gap: 8px; margin-top: 6px; }
 .room-note-form input { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 99px; background: var(--background); font-size: 13px; outline: 0; color: var(--foreground); }
 .room-note-form button { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 50%; color: #fff; background: var(--primary); cursor: pointer; flex-shrink: 0; }
+
+/* Room guidelines */
+.room-title-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex-shrink: 0; }
+.room-guidelines-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 99px;
+  background: var(--card);
+  color: var(--primary);
+  font: 700 12px var(--font-body), sans-serif;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+.room-guidelines-trigger:hover {
+  border-color: var(--primary);
+  background: var(--lavender);
+  transform: translateY(-1px);
+}
+.room-guidelines-trigger:active { transform: translateY(0); }
+.dialog-content.room-guidelines-dialog {
+  max-width: 480px;
+  max-height: calc(100dvh - 40px);
+  padding: 28px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.room-guidelines-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.room-guidelines-eyebrow { display: inline-flex; align-items: center; gap: 6px; color: var(--primary); font: 700 10px Arial, sans-serif; letter-spacing: 0.09em; text-transform: uppercase; }
+.room-guidelines-dialog h2 { margin: 6px 0 0; font-size: 23px; font-weight: 600; color: var(--foreground); letter-spacing: -0.03em; }
+.room-guidelines-close { width: 34px; height: 34px; display: grid; place-items: center; flex-shrink: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--card); color: var(--muted); cursor: pointer; transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease; }
+.room-guidelines-close:hover { border-color: var(--primary); background: var(--lavender); color: var(--primary); }
+.room-guidelines-dialog .room-guidelines-intro { margin: 12px 0 18px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.room-guidelines-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+.room-guidelines-list li { display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: 14px; align-items: start; padding: 12px 0; }
+.room-guidelines-list li + li { border-top: 1px solid color-mix(in srgb, var(--border) 45%, transparent); }
+.room-guidelines-list li:first-child { padding-top: 14px; }
+.room-guidelines-list li:last-child { padding-bottom: 14px; }
+.room-guidelines-number { padding-top: 1px; color: var(--primary); font: 700 11px/1.5 Arial, sans-serif; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
+.room-guidelines-list strong { display: block; color: var(--foreground); font: 700 13.5px/1.35 var(--font-body), sans-serif; }
+.room-guidelines-copy { display: block; margin-top: 3px; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.room-guidelines-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+.room-guidelines-cancel, .room-guidelines-done { min-height: 44px; padding: 0 20px; }
 
 /* ==========================================================================
    6. EXPLORE MAPS & CREATE FORM (/explore, /create, /map/[id])
@@ -1819,7 +1878,9 @@ html.dark .preview-window-line {
 .map-toolbar { position: absolute; z-index: 4; top: 18px; left: 50%; display: flex; align-items: center; gap: 6px; min-height: 50px; padding: 6px 12px; transform: translateX(-50%); border: 1px solid var(--border); border-radius: 14px; background: var(--card); box-shadow: var(--shadow); }
 .toolbar-primary { padding: 8px 16px; border-radius: 99px; color: #fff; background: var(--primary); font: 700 12px Arial, sans-serif; border: 0; cursor: pointer; }
 .toolbar-button { width: 36px; height: 36px; display: grid; place-items: center; color: var(--muted); background: transparent; border: 0; border-radius: 8px; cursor: pointer; }
-.toolbar-button:hover { background: var(--lavender); color: var(--primary); }
+.toolbar-button:hover:not(:disabled) { background: var(--lavender); color: var(--primary); }
+.toolbar-button:disabled { color: var(--muted); opacity: 0.4; cursor: not-allowed; background: transparent; }
+.toolbar-button:disabled:hover { background: transparent; color: var(--muted); }
 .toolbar-save { padding: 8px 16px; border-radius: 99px; color: #fff; background: var(--primary); font: 700 12px Arial, sans-serif; border: 0; cursor: pointer; }
 .details-panel { position: absolute; z-index: 5; top: 20px; right: 20px; bottom: 20px; width: 330px; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 20px; background: var(--card); box-shadow: var(--shadow); display: flex; flex-direction: column; }
 .details-panel-scroll { flex: 1; overflow-y: auto; padding: 24px 24px 0; display: flex; flex-direction: column; gap: 14px; }
@@ -2050,7 +2111,14 @@ html[data-theme="strawberry-lemonade"] .cozy-wallpaper-pattern::before {
     grid-template-columns: minmax(0, 1fr);
     gap: 28px;
   }
-
+  .theme-picker-dropdown {
+    position: fixed;
+    top: 128px;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    max-width: none;
+  }
   .hero-copy {
     min-width: 0;
   }
@@ -2064,6 +2132,24 @@ html[data-theme="strawberry-lemonade"] .cozy-wallpaper-pattern::before {
     font-size: 16px;
     overflow-wrap: break-word;
   }
+}
+
+@media (max-width: 700px) {
+  .room-title-row { flex-direction: column; }
+  .room-title-actions {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 560px) {
+  .dialog-content.room-guidelines-dialog { padding: 22px 18px; border-radius: 18px; }
+  .room-guidelines-dialog h2 { font-size: 21px; }
+  .room-guidelines-footer { flex-direction: column-reverse; align-items: stretch; }
+  .room-guidelines-cancel, .room-guidelines-done { width: 100%; }
 }
 
 :root {

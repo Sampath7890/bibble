@@ -27,7 +27,7 @@
 
 Bibble is a cozy learning-space concept designed to make studying feel less lonely and less overwhelming. Find a study room, settle into a focus session, and turn what you learn into a visual map of connected ideas—one little **bibble** at a time. 💗
 
-The project is currently a **front-end prototype**. It uses sample study rooms and learning maps, and stores personal map edits in your browser with `localStorage`. There is no backend or real-time shared-room service yet. Numbers, hosts, and participant counts shown in sample content are illustrative UI data, not live users.
+The project is currently a **front-end prototype** for learning maps and study rooms. Email/password authentication and user/session persistence use the backend, while personal learning-map edits remain stored in your browser with `localStorage`. Study rooms, sample maps, and their illustrative content are not live or shared backend data. Numbers, hosts, and participant counts shown in sample content are illustrative UI data, not live users.
 
 ---
 ## 📸 Take a peek inside
@@ -76,7 +76,7 @@ The following screenshots show the main areas of Bibble and its learning-map wor
 | **Map editor** | Adds, moves, connects, selects, and removes bibbles, and saves map changes locally. |
 | **Bibble details** | Edits descriptions and notes, tracks status and progress, and provides a save action for changes. |
 | **Theme controls** | Switches between Strawberry Red, Refreshing Green, and Strawberry Lemonade Beach themes, with light and dark modes. |
-| **Local persistence** | Stores map data and theme preferences in the current browser. Clearing browser storage can remove locally saved maps or preferences. |
+| **Local persistence** | Stores learning-map data and theme preferences in the current browser. Clearing browser storage can remove locally saved maps or preferences. |
 
 ### 🌱 The basic learning flow
 
@@ -101,6 +101,8 @@ The following screenshots show the main areas of Bibble and its learning-map wor
 | [Lucide React](https://lucide.dev/) | Interface icons. |
 | [Motion](https://motion.dev/) | UI transitions and animated details panel. |
 | [Radix UI](https://www.radix-ui.com/) and [shadcn](https://ui.shadcn.com/) | UI primitives and styling integration used by the project. |
+| [Supabase Auth](https://supabase.com/docs/guides/auth) | Email/password accounts, confirmation, and secure cookie sessions. |
+| [Supabase](https://supabase.com/) | Hosted PostgreSQL and Storage platform reserved for future persistence work. |
 | Browser `localStorage` | Local persistence for maps and theme preferences. |
 
 ---
@@ -250,9 +252,9 @@ Edges connect one bibble to another to express relationships or learning order. 
 
 ### Local data vs. a backend
 
-The current app is a front-end prototype, not a multi-user service. It stores created and edited maps in the browser under the `bibble-maps` local-storage key. Theme selection is also persisted locally. Local changes are tied to that browser/device and are not automatically synced to another browser or another user.
+Learning maps remain local to the browser under the `bibble-maps` local-storage key, and theme selection is also persisted locally. Local changes are tied to that browser/device and are not automatically synced to another browser or another user. Email/password authentication and user/session persistence are handled by the backend, but study rooms and sample maps are still illustrative content rather than live shared data.
 
-The UI includes log-in and sign-up links, but contributors should not assume that real authentication or server-side accounts are implemented. Keep documentation precise about what works in the current code.
+The UI includes log-in and sign-up flows for authenticated accounts. Keep documentation precise about what works in the current code, especially the distinction between backend-backed accounts and locally stored learning maps.
 
 ---
 
@@ -269,6 +271,36 @@ The theme picker also offers light and dark modes. Theme and mode preferences ar
 When adding a theme, check its definition in `data/themes.ts`, the motif/type definitions, and theme handling in `hooks/use-theme.ts`. Keep the palette readable and accessible in both light and dark modes.
 
 ---
+
+## 🔐 Authentication
+
+Bibble supports email/password accounts through Supabase Auth. Supabase manages password hashing, email confirmation, and persistent cookie-based sessions. Learning maps and study progress remain stored in the browser until issue #37 adds hosted persistence.
+
+For local development:
+
+```bash
+copy .env.example .env
+npm install
+npm run dev
+```
+
+Create a Supabase project, then copy its URL and publishable key from **Project Settings → API** into `.env`:
+
+```env
+SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_PUBLISHABLE_KEY="your-publishable-key"
+```
+
+In the Supabase Dashboard:
+
+1. Enable the **Email** provider under **Authentication → Providers**.
+2. Set the site URL to `http://localhost:3000` under **Authentication → URL Configuration**.
+3. Add `http://localhost:3000/auth/callback` to the allowed redirect URLs (and add the equivalent production callback URL before deploying).
+4. Set the password policy to at least 12 characters with an uppercase letter, lowercase letter, number, and special character so it matches the client and server validation.
+
+New accounts receive a confirmation email when email confirmation is enabled. The callback exchanges the confirmation code for a secure Supabase session. Guest browsing, sample maps, previews, and browser-local map editing remain available without an account.
+
+Never commit `.env`, database files, session secrets, or plaintext passwords. Sample maps and guest browsing remain available without an account. Learning maps remain stored locally in the browser; authenticated accounts do not persist user maps in the database.
 
 ## 🧑‍💻 Contributing
 
@@ -405,7 +437,6 @@ Before submitting a change, consider checking:
 
 Bibble is a prototype, so some UI ideas are still illustrative rather than server-backed. Potential areas for future work include:
 
-- A real backend and authenticated personal accounts.
 - Cloud syncing and sharing of learning maps.
 - Real multi-user study rooms and presence.
 - More robust resource editing and management.

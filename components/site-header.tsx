@@ -1,8 +1,9 @@
 "use client";
 
 import { ThemePicker } from "@/components/ui/theme-picker";
+import { AuthControls } from "@/components/auth/auth-controls";
 import { useTheme } from "@/hooks/use-theme";
-import { ArrowUpRight, LogIn, UserRoundPlus } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -43,12 +44,7 @@ export function SiteHeader() {
             Profile
           </Link>
           <ThemePicker compact />
-          <Link href="/login" className="nav-login">
-            <LogIn size={15} /> Log in
-          </Link>
-          <Link href="/signup" className="nav-signup">
-            <UserRoundPlus size={15} /> Sign up
-          </Link>
+        <AuthControls />
           <Link href="/create" className="nav-cta">
             Create a map <ArrowUpRight size={15} />
           </Link>

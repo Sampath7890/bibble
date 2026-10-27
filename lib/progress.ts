@@ -72,15 +72,13 @@ export function calculateStreak(sessions: FocusSession[], referenceDate: Date = 
   // Calculate current streak
   let currentStreak = 0;
   if (studiedToday || studiedYesterday) {
-    let checkDate = studiedToday ? referenceDate : new Date(referenceDate.getTime() - 24 * 60 * 60 * 1000);
-    while (true) {
-      const dateKey = getLocalDateString(checkDate);
-      if (dateSet.has(dateKey)) {
-        currentStreak++;
-        checkDate = new Date(checkDate.getTime() - 24 * 60 * 60 * 1000);
-      } else {
-        break;
-      }
+    // Step back one calendar day at a time. Subtracting 24h in ms lands on the
+    // same date twice (or skips one) on the days the clocks change.
+    const checkDate = new Date(referenceDate);
+    if (!studiedToday) checkDate.setDate(checkDate.getDate() - 1);
+    while (dateSet.has(getLocalDateString(checkDate))) {
+      currentStreak++;
+      checkDate.setDate(checkDate.getDate() - 1);
     }
   }
 

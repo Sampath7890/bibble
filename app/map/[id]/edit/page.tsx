@@ -45,7 +45,7 @@ export default function EditMapPage() {
         mapId={map.id}
         isEditing
       />
-      <LearningMapCanvas initialMap={map} editable />
+      <LearningMapCanvas key={map.id} initialMap={map} editable />
     </main>
   );
 }

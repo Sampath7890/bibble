@@ -2,7 +2,6 @@
 
 import type { StudyRoom } from "@/types/room";
 import { ArrowUpRight, BookOpen, Clock3, Headphones, Sparkles, Users, Zap } from "lucide-react";
-import Link from "next/link";
 
 const moodIcons = {
   cozy: Sparkles,
@@ -11,7 +10,13 @@ const moodIcons = {
   quiet: BookOpen,
 };
 
-export function StudyRoomCard({ room }: { room: StudyRoom }) {
+interface StudyRoomCardProps {
+  room: StudyRoom;
+  /** Opens the guidelines gate; navigation happens only after confirmation. */
+  onEnter: (room: StudyRoom, trigger: HTMLButtonElement) => void;
+}
+
+export function StudyRoomCard({ room, onEnter }: StudyRoomCardProps) {
   const MoodIcon = moodIcons[room.mood as keyof typeof moodIcons] || Headphones;
 
   return (
@@ -35,10 +40,16 @@ export function StudyRoomCard({ room }: { room: StudyRoom }) {
             <span key={tag} className="room-tag-pill">{tag}</span>
           ))}
         </div>
-        <Link href={`/rooms/${room.id}`} className="room-join-btn">
+        <button
+          type="button"
+          className="room-join-btn"
+          onClick={(event) => onEnter(room, event.currentTarget)}
+          aria-haspopup="dialog"
+          aria-label={`Enter ${room.name} study room`}
+        >
           <span>Enter study room</span>
-          <ArrowUpRight size={16} />
-        </Link>
+          <ArrowUpRight size={16} aria-hidden="true" />
+        </button>
       </div>
 
       <div className="room-card-art cozy-wallpaper-pattern">
