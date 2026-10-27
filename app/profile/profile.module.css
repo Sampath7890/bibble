@@ -142,7 +142,9 @@
 }
 
 .form input,
-.form textarea {
+.form textarea,
+.feedbackForm input:not([type="radio"]),
+.feedbackForm textarea {
   width: 100%;
   padding: 12px 14px;
   border: 1px solid var(--border);
@@ -157,9 +159,21 @@
 }
 
 .form input:focus,
-.form textarea:focus {
+.form textarea:focus,
+.feedbackForm input:not([type="radio"]):focus,
+.feedbackForm textarea:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.feedbackForm input:not([type="radio"])[aria-invalid="true"],
+.feedbackForm textarea[aria-invalid="true"] {
+  border-color: var(--destructive);
+}
+
+.feedbackForm input:not([type="radio"])[aria-invalid="true"]:focus,
+.feedbackForm textarea[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 18%, transparent);
 }
 
 .field {
@@ -267,6 +281,318 @@
   filter: brightness(1.05);
 }
 
+.feedbackPrompt {
+  display: flex;
+  margin-top: 28px;
+}
+
+.feedbackTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border: 1.5px solid var(--border);
+  border-radius: 99px;
+  background: var(--card);
+  color: var(--foreground);
+  font: 700 13px Arial, sans-serif;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.feedbackTrigger:hover {
+  border-color: var(--primary);
+  background: var(--surface-soft);
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.feedbackTrigger:active {
+  transform: translateY(0);
+}
+
+.feedbackTrigger:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--primary) 30%, transparent);
+  outline-offset: 2px;
+}
+
+:global(.dialog-content).feedbackDialog {
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100dvh - 40px);
+  padding: 28px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.feedbackHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.feedbackHead h2 {
+  margin: 6px 0 0;
+  font-size: 23px;
+  font-weight: 600;
+  color: var(--foreground);
+  letter-spacing: -0.03em;
+}
+
+.feedbackHead .eyebrow {
+  margin: 0;
+  color: var(--primary);
+  font: 700 12px Arial, sans-serif;
+}
+
+.feedbackDialog .feedbackIntro {
+  margin: 10px 0 20px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.feedbackClose {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.feedbackClose:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: var(--surface-soft);
+  color: var(--primary);
+}
+
+.feedbackClose:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--primary) 30%, transparent);
+  outline-offset: 2px;
+}
+
+.feedbackClose:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.feedbackForm {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.typeField {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.typeField legend {
+  padding: 0;
+  color: var(--muted-foreground);
+  font: 700 12px Arial, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.typeOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.typeOption {
+  position: relative;
+  display: inline-flex;
+}
+
+.typeOption input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.typeOption span {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 15px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: var(--background);
+  color: var(--muted-foreground);
+  font: 600 13px Arial, sans-serif;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.typeOption:hover span {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.typeOption input:checked + span {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, var(--background));
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.typeOption input:focus-visible + span {
+  outline: 3px solid color-mix(in srgb, var(--primary) 28%, transparent);
+  outline-offset: 2px;
+}
+
+.typeOption input:disabled + span {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.feedbackForm .field > label {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.requiredMark {
+  color: var(--primary);
+}
+
+.feedbackMeta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.feedbackMeta .counter {
+  margin-left: auto;
+}
+
+.feedbackDialog .fieldError {
+  margin: 0;
+  color: var(--destructive);
+  font: 600 12px Arial, sans-serif;
+  line-height: 1.45;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.feedbackActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.feedbackActions .secondary {
+  min-height: 44px;
+}
+
+.feedbackSubmit {
+  min-height: 44px;
+  justify-content: center;
+}
+
+.feedbackSubmit:disabled,
+.feedbackSubmit:disabled:hover {
+  opacity: 0.65;
+  cursor: wait;
+  filter: none;
+}
+
+.spinner {
+  animation: feedbackSpin 0.9s linear infinite;
+}
+
+@keyframes feedbackSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.feedbackDialog .feedbackNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.feedbackDialog .feedbackNotice svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.feedbackDialog .feedbackNotice span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.feedbackDialog .errorNotice {
+  background: color-mix(in srgb, var(--destructive) 10%, var(--card));
+  border-color: color-mix(in srgb, var(--destructive) 38%, var(--border));
+  color: var(--destructive);
+}
+
+.feedbackSuccess {
+  padding: 26px 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface-soft);
+  text-align: center;
+}
+
+.feedbackSuccessIcon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 14px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--primary);
+}
+
+.feedbackDialog .feedbackSuccess h3 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  color: var(--foreground);
+}
+
+.feedbackDialog .feedbackSuccess p {
+  margin: 0 auto 18px;
+  max-width: 360px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 @media (max-width: 560px) {
   .cardTop {
     flex-wrap: wrap;
@@ -274,5 +600,23 @@
 
   .interestRow {
     flex-direction: column;
+  }
+
+  :global(.dialog-content).feedbackDialog {
+    padding: 22px 20px;
+    border-radius: 18px;
+  }
+
+  .feedbackHead h2 {
+    font-size: 21px;
+  }
+
+  .feedbackActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .feedbackActions > button {
+    width: 100%;
   }
 }
