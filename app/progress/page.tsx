@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
+import { useDialog } from "@/hooks/use-dialog";
 import { useStudyStats } from "@/hooks/use-study-stats";
 import { useTheme } from "@/hooks/use-theme";
 import styles from "./progress.module.css";
@@ -51,6 +52,11 @@ export default function ProgressPage() {
   // Modals
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const logDialogRef = useDialog<HTMLDivElement>(isLogModalOpen, () => setIsLogModalOpen(false));
+  const resetDialogRef = useDialog<HTMLDivElement>(isResetModalOpen, () => setIsResetModalOpen(false));
+  const logTitleId = useId();
+  const resetTitleId = useId();
+  const durationLabelId = useId();
 
   // Form states for manual session log
   const [selectedDuration, setSelectedDuration] = useState<number>(25);
@@ -298,10 +304,11 @@ export default function ProgressPage() {
               </p>
             </div>
 
-            <div className={styles.filterTabs} role="tablist" aria-label="Filter maps by progress">
+            <div className={styles.filterTabs} role="group" aria-label="Filter maps by progress">
               <button
                 type="button"
                 className={`${styles.filterTab} ${mapFilter === "all" ? styles.filterTabActive : ""}`}
+                aria-pressed={mapFilter === "all"}
                 onClick={() => setMapFilter("all")}
               >
                 All ({mapItems.length})
@@ -309,6 +316,7 @@ export default function ProgressPage() {
               <button
                 type="button"
                 className={`${styles.filterTab} ${mapFilter === "in-progress" ? styles.filterTabActive : ""}`}
+                aria-pressed={mapFilter === "in-progress"}
                 onClick={() => setMapFilter("in-progress")}
               >
                 In progress ({mapOverview.inProgressMaps})
@@ -316,6 +324,7 @@ export default function ProgressPage() {
               <button
                 type="button"
                 className={`${styles.filterTab} ${mapFilter === "completed" ? styles.filterTabActive : ""}`}
+                aria-pressed={mapFilter === "completed"}
                 onClick={() => setMapFilter("completed")}
               >
                 Completed ({mapOverview.completedMaps})
@@ -323,6 +332,7 @@ export default function ProgressPage() {
               <button
                 type="button"
                 className={`${styles.filterTab} ${mapFilter === "not-started" ? styles.filterTabActive : ""}`}
+                aria-pressed={mapFilter === "not-started"}
                 onClick={() => setMapFilter("not-started")}
               >
                 Not started ({mapOverview.notStartedMaps})
@@ -455,9 +465,16 @@ export default function ProgressPage() {
       {/* Quick Log Session Modal */}
       {isLogModalOpen && (
         <div className={styles.modalBackdrop} onClick={() => setIsLogModalOpen(false)}>
-          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+          <div
+            ref={logDialogRef}
+            className={styles.modalCard}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={logTitleId}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>Log Focus Session</h3>
+              <h3 id={logTitleId} className={styles.modalTitle}>Log Focus Session</h3>
               <button
                 type="button"
                 className={styles.modalCloseBtn}
@@ -470,8 +487,8 @@ export default function ProgressPage() {
 
             <form onSubmit={handleQuickLog}>
               <div className={styles.modalBody}>
-                <label className={styles.formLabel}>Choose session length</label>
-                <div className={styles.quickDurations}>
+                <span id={durationLabelId} className={styles.formLabel}>Choose session length</span>
+                <div className={styles.quickDurations} role="group" aria-labelledby={durationLabelId}>
                   {[15, 25, 45, 60].map((mins) => (
                     <button
                       key={mins}
@@ -479,6 +496,7 @@ export default function ProgressPage() {
                       className={`${styles.quickDurationBtn} ${
                         selectedDuration === mins ? styles.quickDurationBtnActive : ""
                       }`}
+                      aria-pressed={selectedDuration === mins}
                       onClick={() => setSelectedDuration(mins)}
                     >
                       {mins}m
@@ -492,6 +510,7 @@ export default function ProgressPage() {
                   </label>
                   <input
                     id="session-topic"
+                    data-autofocus
                     type="text"
                     className={styles.formInput}
                     placeholder="e.g. DSA Practice, Quiet Reading, Tea Table"
@@ -535,9 +554,16 @@ export default function ProgressPage() {
       {/* Reset Confirmation Modal */}
       {isResetModalOpen && (
         <div className={styles.modalBackdrop} onClick={() => setIsResetModalOpen(false)}>
-          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+          <div
+            ref={resetDialogRef}
+            className={styles.modalCard}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={resetTitleId}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>Reset Study Stats?</h3>
+              <h3 id={resetTitleId} className={styles.modalTitle}>Reset Study Stats?</h3>
               <button
                 type="button"
                 className={styles.modalCloseBtn}
@@ -561,6 +587,7 @@ export default function ProgressPage() {
               <button
                 type="button"
                 className={styles.btnSecondary}
+                data-autofocus
                 onClick={() => setIsResetModalOpen(false)}
               >
                 Keep my stats
