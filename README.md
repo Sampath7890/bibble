@@ -287,8 +287,8 @@ npm run dev
 Create a Supabase project, then copy its URL and publishable key from **Project Settings → API** into `.env`:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="your-publishable-key"
+SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_PUBLISHABLE_KEY="your-publishable-key"
 ```
 
 In the Supabase Dashboard:
