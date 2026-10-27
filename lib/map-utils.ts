@@ -22,9 +22,13 @@ export function mapToFlow(map: LearningMap): { nodes: Node<BibbleNodeData>[]; ed
 }
 
 export function flowToMap(map: LearningMap, nodes: Node<BibbleNodeData>[], edges: Edge[]): LearningMap {
+  const nodeIds = new Set(nodes.map((node) => node.id));
   return {
     ...map,
     bibbles: nodes.map((node) => ({ ...node.data, position: node.position })),
-    edges: edges.map(({ id, source, target }) => ({ id, source, target })),
+    // Never save an edge whose bibble is gone.
+    edges: edges
+      .filter(({ source, target }) => nodeIds.has(source) && nodeIds.has(target))
+      .map(({ id, source, target }) => ({ id, source, target })),
   };
 }
