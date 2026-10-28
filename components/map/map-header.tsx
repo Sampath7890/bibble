@@ -4,6 +4,8 @@ import { ThemePicker } from "@/components/ui/theme-picker";
 import { useTheme } from "@/hooks/use-theme";
 import type { LearningMap } from "@/types/map";
 import { ArrowLeft, Check, Pencil, Save, Sparkles } from "lucide-react";
+import { Download } from "lucide-react";
+import { downloadMapExport } from "@/lib/maps/persistence";
 import Link from "next/link";
 
 interface MapHeaderProps {
@@ -59,6 +61,17 @@ export function MapHeader({
           >
             {saved ? <Check size={15} /> : <Save size={15} />}
             {saved ? "Map saved" : "Save Map"}
+          </button>
+        )}
+
+        {!isEditing && map && (
+          <button
+            type="button"
+            className="header-action-btn"
+            onClick={() => void downloadMapExport(map)}
+            aria-label="Download map"
+          >
+            <Download size={15} /> Download
           </button>
         )}
 

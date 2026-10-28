@@ -27,7 +27,7 @@
 
 Bibble is a cozy learning-space concept designed to make studying feel less lonely and less overwhelming. Find a study room, settle into a focus session, and turn what you learn into a visual map of connected ideas—one little **bibble** at a time. 💗
 
-The project is currently a **front-end prototype** for learning maps and study rooms. Email/password authentication and user/session persistence use the backend, while personal learning-map edits remain stored in your browser with `localStorage`. Study rooms, sample maps, and their illustrative content are not live or shared backend data. Numbers, hosts, and participant counts shown in sample content are illustrative UI data, not live users.
+The project is currently a **front-end prototype** for learning maps and study rooms. Email/password authentication and authenticated custom-map persistence use Supabase, while guest and existing local-map edits remain available in browser `localStorage`. Study rooms, sample maps, and their illustrative content are not live or shared backend data. Numbers, hosts, and participant counts shown in sample content are illustrative UI data, not live users.
 
 ---
 ## 📸 Take a peek inside
@@ -102,8 +102,8 @@ The following screenshots show the main areas of Bibble and its learning-map wor
 | [Motion](https://motion.dev/) | UI transitions and animated details panel. |
 | [Radix UI](https://www.radix-ui.com/) and [shadcn](https://ui.shadcn.com/) | UI primitives and styling integration used by the project. |
 | [Supabase Auth](https://supabase.com/docs/guides/auth) | Email/password accounts, confirmation, and secure cookie sessions. |
-| [Supabase](https://supabase.com/) | Hosted PostgreSQL and Storage platform reserved for future persistence work. |
-| Browser `localStorage` | Local persistence for maps and theme preferences. |
+| [Supabase](https://supabase.com/) | Hosted PostgreSQL and private Storage for authenticated map persistence and exports. |
+| Browser `localStorage` | Guest/local cache persistence for maps and theme preferences. |
 
 ---
 
@@ -274,7 +274,7 @@ When adding a theme, check its definition in `data/themes.ts`, the motif/type de
 
 ## 🔐 Authentication
 
-Bibble supports email/password accounts through Supabase Auth. Supabase manages password hashing, email confirmation, and persistent cookie-based sessions. Learning maps and study progress remain stored in the browser until issue #37 adds hosted persistence.
+Bibble supports email/password accounts through Supabase Auth. Supabase manages password hashing, email confirmation, and persistent cookie-based sessions. Authenticated custom learning maps are persisted in Supabase PostgreSQL; guests and existing local maps continue to use browser storage.
 
 For local development:
 
@@ -298,9 +298,11 @@ In the Supabase Dashboard:
 3. Add `http://localhost:3000/auth/callback` to the allowed redirect URLs (and add the equivalent production callback URL before deploying).
 4. Set the password policy to at least 12 characters with an uppercase letter, lowercase letter, number, and special character so it matches the client and server validation.
 
+Apply the checked-in SQL migration in `supabase/migrations/20261026000000_learning_maps.sql` from the Supabase SQL Editor (or your normal Supabase migration workflow). It creates the map, bibble, and edge tables, enables Row Level Security, and configures the private `map-exports` Storage bucket. The application never uses a service-role key; all database and Storage access uses the authenticated publishable client and RLS.
+
 New accounts receive a confirmation email when email confirmation is enabled. The callback exchanges the confirmation code for a secure Supabase session. Guest browsing, sample maps, previews, and browser-local map editing remain available without an account.
 
-Never commit `.env`, database files, session secrets, or plaintext passwords. Sample maps and guest browsing remain available without an account. Learning maps remain stored locally in the browser; authenticated accounts do not persist user maps in the database.
+Never commit `.env`, database files, session secrets, or plaintext passwords. Sample maps and guest browsing remain available without an account. Existing localStorage maps are not automatically migrated or deleted; sign-in only enables persistence for maps created or saved through the authenticated flow.
 
 ## 🧑‍💻 Contributing
 

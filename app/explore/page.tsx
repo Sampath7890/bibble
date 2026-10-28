@@ -6,8 +6,9 @@ import { categories } from "@/data/categories";
 import { sampleMaps } from "@/data/sample-maps";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import type { LearningMap } from "@/types/map";
+import { deleteMapFromSupabase, listMapsFromSupabase } from "@/lib/maps/persistence";
 import { Search, SlidersHorizontal, Star } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function ExplorePage() {
   const [query, setQuery] = useState("");
@@ -15,6 +16,10 @@ export default function ExplorePage() {
   // Read user-saved/custom maps and the IDs of system maps the user removed.
   const [storedMaps, setStoredMaps] = useLocalStorage<LearningMap[]>("bibble-maps", []);
   const [deletedMapIds, setDeletedMapIds] = useLocalStorage<string[]>("bibble-deleted-maps", []);
+  const [remoteMaps, setRemoteMaps] = useState<LearningMap[]>([]);
+  useEffect(() => {
+    listMapsFromSupabase().then(setRemoteMaps).catch(() => setRemoteMaps([]));
+  }, []);
 
   // Merge: stored maps override matching sample maps, user-created maps are appended,
   // and system maps the user deleted are left out entirely (even if an override exists).
@@ -31,8 +36,14 @@ export default function ExplorePage() {
         merged.push(stored);
       }
     }
+    for (const remote of remoteMaps) {
+      if (deletedMapIds.includes(remote.id)) continue;
+      const existingIndex = merged.findIndex((map) => map.id === remote.id);
+      if (existingIndex >= 0) merged[existingIndex] = remote;
+      else merged.push(remote);
+    }
     return merged;
-  }, [storedMaps, deletedMapIds]);
+  }, [storedMaps, deletedMapIds, remoteMaps]);
 
   const maps = useMemo(
     () => allMaps.filter(
@@ -44,14 +55,17 @@ export default function ExplorePage() {
   );
 
   // System maps are hidden via an ID list; user-created maps are removed from storage.
-  const handleDeleteMap = (mapId: string) => {
+  const handleDeleteMap = async (mapId: string) => {
     if (sampleMaps.some((map) => map.id === mapId)) {
       setDeletedMapIds((currentIds) =>
         currentIds.includes(mapId) ? currentIds : [...currentIds, mapId],
       );
       return;
     }
-    setStoredMaps((currentMaps) => currentMaps.filter((map) => map.id !== mapId));
+    if (await deleteMapFromSupabase(mapId)) {
+      setStoredMaps((currentMaps) => currentMaps.filter((map) => map.id !== mapId));
+      setRemoteMaps((currentMaps) => currentMaps.filter((map) => map.id !== mapId));
+    }
   };
 
   return (
