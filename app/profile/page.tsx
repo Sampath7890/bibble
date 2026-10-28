@@ -3,8 +3,16 @@
 import { SiteHeader } from "@/components/site-header";
 import { categories } from "@/data/categories";
 import { useLocalStorage } from "@/hooks/use-local-storage";
-import { Pencil, Plus, Sparkles, UserRound, X } from "lucide-react";
-import { useState } from "react";
+import {
+  FEEDBACK_LIMITS,
+  FEEDBACK_TYPE_OPTIONS,
+  hasValidationErrors,
+  parseFeedbackInput,
+  type FeedbackFieldErrors,
+  type FeedbackType,
+} from "@/lib/feedback";
+import { AlertCircle, Check, LoaderCircle, MessageSquare, Pencil, Plus, Send, Sparkles, UserRound, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./profile.module.css";
 
 interface Profile {
@@ -28,6 +36,17 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Profile>(emptyProfile);
   const [interestInput, setInterestInput] = useState("");
+  const [feedbackType, setFeedbackType] = useState<FeedbackType>("feedback");
+  const [feedbackSubject, setFeedbackSubject] = useState("");
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackErrors, setFeedbackErrors] = useState<FeedbackFieldErrors>({});
+  const [feedbackNotice, setFeedbackNotice] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const feedbackSubmittingRef = useRef(false);
+  const feedbackTriggerRef = useRef<HTMLButtonElement>(null);
+  const feedbackDialogRef = useRef<HTMLDivElement>(null);
+  const feedbackCloseRef = useRef<HTMLButtonElement>(null);
 
   function startEditing() {
     setDraft(profile);
@@ -55,6 +74,128 @@ export default function ProfilePage() {
       interests: draft.interests,
     });
     setEditing(false);
+  }
+
+  function clearFeedbackError(field: keyof FeedbackFieldErrors) {
+    setFeedbackErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
+
+  const closeFeedback = useCallback(() => {
+    if (feedbackSubmittingRef.current) return;
+    setFeedbackOpen(false);
+    setFeedbackNotice(null);
+    setFeedbackErrors({});
+    feedbackTriggerRef.current?.focus();
+  }, []);
+
+  function openFeedback() {
+    setFeedbackOpen(true);
+  }
+
+  useEffect(() => {
+    if (!feedbackOpen) return;
+
+    const dialog = feedbackDialogRef.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    feedbackCloseRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeFeedback();
+        return;
+      }
+
+      if (event.key !== "Tab" || !dialog) return;
+
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (!dialog.contains(document.activeElement)) {
+        event.preventDefault();
+        first.focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [feedbackOpen, closeFeedback]);
+
+  async function handleFeedbackSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (feedbackSubmittingRef.current) return;
+
+    const parsed = parseFeedbackInput({
+      type: feedbackType,
+      subject: feedbackSubject,
+      message: feedbackMessage,
+    });
+    setFeedbackErrors(parsed.errors);
+
+    if (hasValidationErrors(parsed.errors)) {
+      setFeedbackNotice(null);
+      return;
+    }
+
+    feedbackSubmittingRef.current = true;
+    setFeedbackSubmitting(true);
+    setFeedbackNotice(null);
+
+    try {
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed.value),
+      });
+      const result = (await response.json().catch(() => null)) as { error?: string } | null;
+
+      if (!response.ok) {
+        setFeedbackNotice({
+          kind: "error",
+          text: result?.error ?? "We couldn't send your feedback. Please try again.",
+        });
+        return;
+      }
+
+      setFeedbackType("feedback");
+      setFeedbackSubject("");
+      setFeedbackMessage("");
+      setFeedbackErrors({});
+      setFeedbackNotice({
+        kind: "success",
+        text: "Thanks! Your feedback has been sent successfully.",
+      });
+    } catch {
+      setFeedbackNotice({
+        kind: "error",
+        text: "We couldn't reach the server. Check your connection and try again.",
+      });
+    } finally {
+      feedbackSubmittingRef.current = false;
+      setFeedbackSubmitting(false);
+    }
   }
 
   const showEmptyState = hydrated && !editing && !hasDetails(profile);
@@ -204,6 +345,217 @@ export default function ProfilePage() {
               </button>
             </div>
           </form>
+        )}
+
+        <div className={styles.feedbackPrompt}>
+          <button
+            ref={feedbackTriggerRef}
+            type="button"
+            className={styles.feedbackTrigger}
+            onClick={openFeedback}
+            aria-haspopup="dialog"
+            aria-expanded={feedbackOpen}
+          >
+            <MessageSquare size={15} aria-hidden="true" />
+            Give Feedback
+          </button>
+        </div>
+
+        {feedbackOpen && (
+          <div className="dialog-overlay" onClick={closeFeedback}>
+            <div
+              ref={feedbackDialogRef}
+              className={`dialog-content ${styles.feedbackDialog}`}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="feedback-title"
+              aria-describedby="feedback-intro"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className={styles.feedbackHead}>
+                <div>
+                  <p className={styles.eyebrow}>
+                    <MessageSquare size={14} /> Help Bibble grow
+                  </p>
+                  <h2 id="feedback-title">Feedback &amp; Bug Report</h2>
+                </div>
+                <button
+                  ref={feedbackCloseRef}
+                  type="button"
+                  className={styles.feedbackClose}
+                  onClick={closeFeedback}
+                  disabled={feedbackSubmitting}
+                  aria-label="Close feedback form"
+                >
+                  <X size={18} aria-hidden="true" />
+                </button>
+              </div>
+
+              <p className={styles.feedbackIntro} id="feedback-intro">
+                Share a thought, report something that feels off, or suggest what you&apos;d love to see next.
+              </p>
+
+              {feedbackNotice?.kind === "success" ? (
+                <div className={styles.feedbackSuccess} role="status">
+                  <span className={styles.feedbackSuccessIcon} aria-hidden="true">
+                    <Check size={22} />
+                  </span>
+                  <h3>Feedback sent</h3>
+                  <p>{feedbackNotice.text}</p>
+                  <button
+                    type="button"
+                    className={`${styles.primary} ${styles.feedbackSubmit}`}
+                    onClick={closeFeedback}
+                    autoFocus
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                <form
+                  className={styles.feedbackForm}
+                  onSubmit={handleFeedbackSubmit}
+                  noValidate
+                  aria-busy={feedbackSubmitting}
+                >
+                  <fieldset
+                    className={styles.typeField}
+                    disabled={feedbackSubmitting}
+                    aria-describedby={feedbackErrors.type ? "feedback-type-error" : undefined}
+                  >
+                    <legend>Feedback type</legend>
+                    <div className={styles.typeOptions}>
+                      {FEEDBACK_TYPE_OPTIONS.map((option) => (
+                        <label key={option.value} className={styles.typeOption}>
+                          <input
+                            type="radio"
+                            name="feedback-type"
+                            value={option.value}
+                            checked={feedbackType === option.value}
+                            onChange={() => {
+                              setFeedbackType(option.value);
+                              clearFeedbackError("type");
+                            }}
+                          />
+                          <span>{option.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {feedbackErrors.type && (
+                      <p className={styles.fieldError} id="feedback-type-error" role="alert">
+                        {feedbackErrors.type}
+                      </p>
+                    )}
+                  </fieldset>
+
+                  <div className={styles.field}>
+                    <label htmlFor="feedback-subject">
+                      Subject <span className={styles.requiredMark} aria-hidden="true">*</span>
+                    </label>
+                    <input
+                      id="feedback-subject"
+                      name="subject"
+                      value={feedbackSubject}
+                      onChange={(event) => {
+                        setFeedbackSubject(event.target.value);
+                        clearFeedbackError("subject");
+                      }}
+                      maxLength={FEEDBACK_LIMITS.subject.max}
+                      placeholder="A quick summary — e.g. Focus timer stops on mobile"
+                      required
+                      disabled={feedbackSubmitting}
+                      aria-invalid={feedbackErrors.subject ? true : undefined}
+                      aria-describedby={
+                        feedbackErrors.subject
+                          ? "feedback-subject-error feedback-subject-count"
+                          : "feedback-subject-count"
+                      }
+                    />
+                    <div className={styles.feedbackMeta}>
+                      {feedbackErrors.subject ? (
+                        <p className={styles.fieldError} id="feedback-subject-error" role="alert">
+                          {feedbackErrors.subject}
+                        </p>
+                      ) : (
+                        <span />
+                      )}
+                      <span className={styles.counter} id="feedback-subject-count">
+                        {feedbackSubject.length}/{FEEDBACK_LIMITS.subject.max}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className={styles.field}>
+                    <label htmlFor="feedback-message">
+                      Message <span className={styles.requiredMark} aria-hidden="true">*</span>
+                    </label>
+                    <textarea
+                      id="feedback-message"
+                      name="message"
+                      value={feedbackMessage}
+                      onChange={(event) => {
+                        setFeedbackMessage(event.target.value);
+                        clearFeedbackError("message");
+                      }}
+                      maxLength={FEEDBACK_LIMITS.message.max}
+                      rows={5}
+                      placeholder="Tell us what happened, what you expected, and anything that would help us understand."
+                      required
+                      disabled={feedbackSubmitting}
+                      aria-invalid={feedbackErrors.message ? true : undefined}
+                      aria-describedby={
+                        feedbackErrors.message
+                          ? "feedback-message-error feedback-message-count"
+                          : "feedback-message-count"
+                      }
+                    />
+                    <div className={styles.feedbackMeta}>
+                      {feedbackErrors.message ? (
+                        <p className={styles.fieldError} id="feedback-message-error" role="alert">
+                          {feedbackErrors.message}
+                        </p>
+                      ) : (
+                        <span />
+                      )}
+                      <span className={styles.counter} id="feedback-message-count">
+                        {feedbackMessage.length}/{FEEDBACK_LIMITS.message.max}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className={styles.feedbackActions}>
+                    <button
+                      type="submit"
+                      className={`${styles.primary} ${styles.feedbackSubmit}`}
+                      disabled={feedbackSubmitting}
+                    >
+                      {feedbackSubmitting ? (
+                        <LoaderCircle size={15} className={styles.spinner} aria-hidden="true" />
+                      ) : (
+                        <Send size={15} aria-hidden="true" />
+                      )}
+                      {feedbackSubmitting ? "Sending feedback…" : "Submit Feedback"}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.secondary}
+                      onClick={closeFeedback}
+                      disabled={feedbackSubmitting}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+
+                  {feedbackNotice?.kind === "error" && (
+                    <p className={`${styles.feedbackNotice} ${styles.errorNotice}`} role="alert">
+                      <AlertCircle size={16} aria-hidden="true" />
+                      <span>{feedbackNotice.text}</span>
+                    </p>
+                  )}
+                </form>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </main>
